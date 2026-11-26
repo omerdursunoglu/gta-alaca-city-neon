@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GTA: Alaca City — Tokat 3D Open World</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Crosshair (shown during pointer lock / aiming) -->
+    <div id="crosshair" aria-hidden="true">
+      <span class="ch-line ch-top"></span>
+      <span class="ch-line ch-bottom"></span>
+      <span class="ch-line ch-left"></span>
+      <span class="ch-line ch-right"></span>
+      <span class="ch-dot"></span>
+    </div>
+
+    <!-- GTA-Style HUD -->
+    <div id="hud">
+      <!-- Top-left Location Banner -->
+      <div id="location-banner">
+        <div class="loc-title">ALACA MESCİT MAHALLESİ</div>
+        <div class="loc-coords">40.3116° N, 36.5515° E · TOKAT</div>
+      </div>
+
+      <!-- Top-right GTA Status Cluster -->
+      <div id="top-right-hud">
+        <div class="hud-row">
+          <div id="fps-controls" class="glass-pill">
+            <span id="fps-readout">60 FPS</span>
+            <select id="fps-select" title="FPS Cap">
+              <option value="30">30 FPS</option>
+              <option value="60" selected>60 FPS</option>
+              <option value="120">120 FPS</option>
+              <option value="0">UNLIMITED</option>
+            </select>
+          </div>
+          <button id="btn-audio" class="glass-pill hud-btn" title="Toggle Audio (M)">🔊 SFX</button>
+          <button id="btn-help" class="glass-pill hud-btn" title="Controls & Map (H)">?</button>
+        </div>
+
+        <div id="wanted-stars" aria-label="Wanted Level">
+          <span class="star" data-star="1">★</span>
+          <span class="star" data-star="2">★</span>
+          <span class="star" data-star="3">★</span>
+          <span class="star" data-star="4">★</span>
+          <span class="star" data-star="5">★</span>
+        </div>
+
+        <div id="money-display">$000,450</div>
+
+        <div id="weapon-card">
+          <div id="weapon-icon">👊</div>
+          <div class="weapon-meta">
+            <div id="weapon-name">FISTS</div>
+            <div id="weapon-ammo">MELEE</div>
+          </div>
+        </div>
+
+        <div id="weapon-slots">
+          <button class="w-slot active" data-slot="0"><span>1</span>👊</button>
+          <button class="w-slot" data-slot="1"><span>2</span>🔪</button>
+          <button class="w-slot" data-slot="2"><span>3</span>🔫</button>
+          <button class="w-slot" data-slot="3"><span>4</span>💥</button>
+        </div>
+      </div>
+
+      <!-- Bottom-left Minimap Radar + Health/Armor/Stamina -->
+      <div id="radar-cluster">
+        <div id="radar-wrapper">
+          <canvas id="minimap-canvas" width="184" height="184"></canvas>
+          <div id="radar-north">N</div>
+        </div>
+        <div id="vital-bars">
+          <div class="bar-track" title="Health">
+            <div id="health-bar" class="bar-fill health" style="width: 100%"></div>
+          </div>
+          <div class="bar-track" title="Stamina">
+            <div id="stamina-bar" class="bar-fill stamina" style="width: 100%"></div>
+          </div>
+        </div>
+        <div id="zone-tag">Street · Outdoor</div>
+      </div>
+
+      <!-- Bottom-center Prompts & Toast Notifications -->
+      <div id="prompt-banner" class="hidden"></div>
+      <div id="toast-feed"></div>
+    </div>
+
+    <!-- Mobile / Touch Controls -->
+    <div id="touch-controls" class="hidden">
+      <div id="touch-joystick-zone">
+        <div id="joystick-base">
+          <div id="joystick-knob"></div>
+        </div>
+      </div>
+      <div id="touch-look-zone"></div>
+      <div id="touch-actions">
+        <button id="t-fire" class="t-btn t-fire">FIRE</button>
+        <button id="t-jump" class="t-btn">JUMP</button>
+        <button id="t-interact" class="t-btn">ACT</button>
+        <button id="t-weapon" class="t-btn">WPN</button>
+      </div>
+    </div>
+
+    <!-- Start / Controls & Settings Modal -->
+    <div id="overlay-modal">
+      <div class="modal-card">
+        <div class="modal-badge">TOKAT · 50M HISTORIC QUARTER</div>
+        <h1>GTA: <span>ALACA CITY</span></h1>
+        <p class="modal-sub">
+          Explore a procedurally crafted 3D neighborhood centered on <strong>Tokat Alaca Mescit Camii</strong>
+          (1300 AD Seljuk minaret &amp; Ottoman prayer hall), an enterable 2-story traditional timber-frame house,
+          roaming residents, and Turkish street cats.
+        </p>
+
+        <div class="controls-grid">
+          <div class="ctrl-item"><kbd>W A S D</kbd><span>Move</span></div>
+          <div class="ctrl-item"><kbd>SHIFT</kbd><span>Sprint</span></div>
+          <div class="ctrl-item"><kbd>SPACE</kbd><span>Jump</span></div>
+          <div class="ctrl-item"><kbd>MOUSE</kbd><span>Orbit Camera</span></div>
+          <div class="ctrl-item"><kbd>L-CLICK</kbd><span>Punch / Slash / Shoot</span></div>
+          <div class="ctrl-item"><kbd>R-CLICK</kbd><span>Aim Camera</span></div>
+          <div class="ctrl-item"><kbd>1 - 4</kbd><span>Fists / Knife / Pistol / SMG</span></div>
+          <div class="ctrl-item"><kbd>E</kbd><span>Pet Cat / Interact</span></div>
+        </div>
+
+        <div class="map-hook-row">
+          <label for="gmaps-key-input">Optional Google Maps Static API Key (ground tile):</label>
+          <div class="gmaps-input-wrap">
+            <input id="gmaps-key-input" type="password" placeholder="Leave blank for instant offline procedural ground" />
+            <button id="btn-apply-gmaps" type="button">Apply</button>
+          </div>
+          <div id="map-source-status" class="status-note">Map Mode: Instant Procedural Tokat Layout</div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-play" class="primary-btn">ENTER ALACA CITY</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
