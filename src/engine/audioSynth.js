@@ -10,6 +10,9 @@ const SOUND_MANIFEST = {
   cat_meow_3: './assets/audio/cat_meow_3.mp3',
   cat_hiss: './assets/audio/cat_hiss.mp3',
   pistol: './assets/audio/pistol.mp3',
+  m416_1: './assets/audio/m416_1.mp3',
+  m416_2: './assets/audio/m416_2.mp3',
+  m416_3: './assets/audio/m416_3.mp3',
   smg: './assets/audio/smg.mp3',
   reload: './assets/audio/reload.mp3',
   weapon_switch: './assets/audio/weapon_switch.mp3',
@@ -243,8 +246,16 @@ export class AudioSynth {
     noise.stop(now + 0.26);
   }
 
+  playM416() {
+    if (!this.ctx || this.muted) return;
+    const idx = 1 + Math.floor(Math.random() * 3);
+    if (this._playBuffer(`m416_${idx}`, { volume: 0.72, rateMin: 0.96, rateMax: 1.05 })) return;
+    this.playSMG();
+  }
+
   playSMG() {
     if (!this.ctx || this.muted) return;
+    if (this._playBuffer('m416_1', { volume: 0.72, rateMin: 0.96, rateMax: 1.05 })) return;
     if (this._playBuffer('smg', { volume: 0.62, rateMin: 0.96, rateMax: 1.08 })) return;
 
     const now = this.ctx.currentTime;
@@ -353,5 +364,61 @@ export class AudioSynth {
     if (!this.ctx || this.muted) return;
     const key = opening ? 'door_open' : 'door_close';
     if (this._playBuffer(key, { volume: 0.72, rateMin: 0.95, rateMax: 1.05 })) return;
+  }
+
+  playMoviePulse() {
+    if (!this.ctx || this.muted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(110 + Math.random() * 40, now);
+    osc.frequency.exponentialRampToValueAtTime(72, now + 0.25);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+    osc.connect(gain);
+    gain.connect(this.master);
+    osc.start(now);
+    osc.stop(now + 0.27);
+  }
+
+  playAngrySting() {
+    if (!this.ctx || this.muted) return;
+    const now = this.ctx.currentTime;
+    [196, 207.65, 293.66].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.86, now + 0.45);
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 1100;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.09 / (idx + 1), now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.master);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    });
+  }
+
+  speakTurkish(text, { pitch = 1.0, rate = 1.04 } = {}) {
+    if (this.muted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'tr-TR';
+      const voices = window.speechSynthesis.getVoices?.() || [];
+      const trVoice = voices.find((v) => v.lang?.toLowerCase().startsWith('tr'));
+      if (trVoice) utter.voice = trVoice;
+      utter.pitch = pitch;
+      utter.rate = rate;
+      utter.volume = 0.85;
+      window.speechSynthesis.speak(utter);
+    } catch {
+      // Speech synthesis optional fallback
+    }
   }
 }

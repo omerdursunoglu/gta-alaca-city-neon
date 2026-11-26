@@ -5,7 +5,7 @@ export const WEAPONS = [
   { id: 'fists', name: 'FISTS', icon: '👊', melee: true, range: 1.9, damage: 25, cooldown: 0.34, auto: false, magSize: 0 },
   { id: 'knife', name: 'COMBAT KNIFE', icon: '🔪', melee: true, range: 2.35, damage: 45, cooldown: 0.38, auto: false, magSize: 0 },
   { id: 'pistol', name: '9MM PISTOL', icon: '🔫', melee: false, range: 65, damage: 38, cooldown: 0.24, auto: false, magSize: 15, reloadTime: 1.15, spread: 0.012 },
-  { id: 'smg', name: 'COMPACT SMG', icon: '💥', melee: false, range: 58, damage: 22, cooldown: 0.09, auto: true, magSize: 30, reloadTime: 1.45, spread: 0.036 },
+  { id: 'm416', name: 'M416 5.56', icon: '💥', melee: false, range: 75, damage: 28, cooldown: 0.086, auto: true, magSize: 30, reloadTime: 1.45, spread: 0.022 },
 ];
 
 export class Player {
@@ -138,16 +138,29 @@ export class Player {
     this.weaponMeshes.pistol = pistolGroup;
     this.weaponMount.add(pistolGroup);
 
-    // Compact SMG
-    const smgGroup = new THREE.Group();
-    smgGroup.add(makePart(new THREE.BoxGeometry(0.052, 0.1, 0.34), matGunDark, 0, 0.02, 0.12));
-    smgGroup.add(makePart(new THREE.BoxGeometry(0.036, 0.12, 0.05), matGunDark, 0, -0.06, 0.02));
-    smgGroup.add(makePart(new THREE.BoxGeometry(0.032, 0.17, 0.044), matSteel, 0, -0.08, 0.17));
-    const barrel = makePart(new THREE.CylinderGeometry(0.016, 0.016, 0.14, 8), matGunDark, 0, 0.025, 0.35);
+    // M416 5.56mm Assault Rifle
+    const m416Group = new THREE.Group();
+    const matTan = new THREE.MeshStandardMaterial({ color: 0x9c896c, roughness: 0.55, metalness: 0.2 });
+    // Upper/lower receiver & quad-rail handguard
+    m416Group.add(makePart(new THREE.BoxGeometry(0.052, 0.088, 0.34), matGunDark, 0, 0.02, 0.1));
+    m416Group.add(makePart(new THREE.BoxGeometry(0.056, 0.068, 0.22), matTan, 0, 0.024, 0.32));
+    // Pistol grip & telescoping stock
+    m416Group.add(makePart(new THREE.BoxGeometry(0.036, 0.11, 0.048), matGunDark, 0, -0.055, 0.0));
+    m416Group.add(makePart(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), matGunDark, 0, 0.024, -0.14));
+    m416Group.children[3].rotation.x = Math.PI / 2;
+    m416Group.add(makePart(new THREE.BoxGeometry(0.044, 0.12, 0.08), matTan, 0, -0.005, -0.2));
+    // Curved 30-round STANAG magazine
+    const mag = makePart(new THREE.BoxGeometry(0.034, 0.17, 0.056), matSteel, 0, -0.085, 0.15);
+    mag.rotation.x = 0.16;
+    m416Group.add(mag);
+    // Holographic red-dot optic
+    m416Group.add(makePart(new THREE.BoxGeometry(0.04, 0.042, 0.065), matGunDark, 0, 0.084, 0.08));
+    // Barrel & flash hider
+    const barrel = makePart(new THREE.CylinderGeometry(0.013, 0.014, 0.2, 8), matGunDark, 0, 0.024, 0.5);
     barrel.rotation.x = Math.PI / 2;
-    smgGroup.add(barrel);
-    this.weaponMeshes.smg = smgGroup;
-    this.weaponMount.add(smgGroup);
+    m416Group.add(barrel);
+    this.weaponMeshes.m416 = m416Group;
+    this.weaponMount.add(m416Group);
 
     // Muzzle Flash Mesh
     this.muzzleFlash = new THREE.Mesh(
@@ -195,7 +208,7 @@ export class Player {
     Object.entries(this.weaponMeshes).forEach(([k, mesh]) => {
       mesh.visible = k === wId;
     });
-    this.muzzleFlash.position.z = wId === 'smg' ? 0.48 : 0.28;
+    this.muzzleFlash.position.z = wId === 'm416' ? 0.62 : 0.28;
     if (changed) this.audio.playWeaponSwitch();
     return this.currentWeapon;
   }
@@ -229,7 +242,7 @@ export class Player {
       this.muzzleFlash.visible = true;
       this.muzzleFlash.rotation.z = Math.random() * Math.PI * 2;
       if (w.id === 'pistol') this.audio.playPistol();
-      else this.audio.playSMG();
+      else this.audio.playM416();
 
       // Raycast from camera center with slight weapon spread
       const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
@@ -366,6 +379,97 @@ export class Player {
     this.group.rotation.y = this.yaw;
   }
 
+  hideWeaponsForCutscene(hide) {
+    if (hide) {
+      Object.values(this.weaponMeshes).forEach((m) => {
+        m.visible = false;
+      });
+      this.muzzleFlash.visible = false;
+    } else {
+      const wId = this.currentWeapon.id;
+      Object.entries(this.weaponMeshes).forEach(([k, mesh]) => {
+        mesh.visible = k === wId;
+      });
+    }
+  }
+
+  moveCutsceneToward(targetPos, speed, dt, colliders, walkableSurfaces) {
+    const dx = targetPos.x - this.position.x;
+    const dz = targetPos.z - this.position.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 0.04) {
+      const step = Math.min(dist, speed * dt);
+      this.position.x += (dx / dist) * step;
+      this.position.z += (dz / dist) * step;
+      resolveEntityCollisions(this.position, this.radius, this.height, colliders, walkableSurfaces);
+      this.position.y = getGroundHeightAt(this.position.x, this.position.z, this.position.y, walkableSurfaces);
+      const targetYaw = Math.atan2(dx, dz);
+      this.yaw = this._lerpAngle(this.yaw, targetYaw, Math.min(1, dt * 14));
+    }
+    this.velocity.set(0, 0, 0);
+    this.onGround = true;
+    this.group.position.copy(this.position);
+    this.group.rotation.y = this.yaw;
+    return dist;
+  }
+
+  setCutscenePose(mode, dt, speed = 0, lookYaw = null) {
+    const t = performance.now() * 0.001;
+    if (lookYaw !== null) {
+      this.yaw = this._lerpAngle(this.yaw, lookYaw, Math.min(1, dt * 10));
+      this.group.rotation.y = this.yaw;
+    }
+
+    if (mode === 'walk' || mode === 'flee') {
+      const sprinting = mode === 'flee';
+      this._animateCharacter(dt, speed, sprinting);
+      if (sprinting) {
+        // Panicked slightly raised arms while sprinting away
+        const swing = Math.sin(this.walkCycle) * 0.8;
+        this.leftArmPivot.rotation.set(-0.9 - swing * 0.55, 0, 0.22);
+        this.rightArmPivot.rotation.set(-0.9 + swing * 0.55, 0, -0.22);
+        this.leftForearmPivot.rotation.set(-0.95, 0, 0);
+        this.rightForearmPivot.rotation.set(-0.95, 0, 0);
+      }
+      return;
+    }
+
+    // Standing cutscene poses (watch / ask / flinch)
+    this.walkCycle = 0;
+    this.leftLegPivot.rotation.set(0, 0, 0);
+    this.rightLegPivot.rotation.set(0, 0, 0);
+    this.leftKneePivot.rotation.set(0, 0, 0);
+    this.rightKneePivot.rotation.set(0, 0, 0);
+    this.hips.position.y = 0.88 + Math.sin(t * 2.2) * 0.01;
+    this.headPivot.rotation.set(0, 0, 0);
+
+    if (mode === 'watch') {
+      // Leaning forward slightly, fascinated by the movie
+      this.torsoPivot.rotation.set(0.16, 0, 0);
+      this.headPivot.rotation.set(0.08 + Math.sin(t * 1.4) * 0.04, Math.sin(t * 0.8) * 0.06, 0);
+      this.leftArmPivot.rotation.set(-0.18, 0, 0.08);
+      this.leftForearmPivot.rotation.set(-0.45, 0, 0);
+      this.rightArmPivot.rotation.set(-0.22, 0, -0.08);
+      this.rightForearmPivot.rotation.set(-0.5, 0, 0);
+    } else if (mode === 'ask') {
+      // Polite "Dondurma var mı abi?" hand gesture
+      this.torsoPivot.rotation.set(0.04, 0, 0);
+      this.headPivot.rotation.set(-0.04, Math.sin(t * 3.5) * 0.05, 0.06);
+      this.leftArmPivot.rotation.set(-0.12, 0, 0.1);
+      this.leftForearmPivot.rotation.set(-0.25, 0, 0);
+      this.rightArmPivot.rotation.set(-1.12 + Math.sin(t * 6) * 0.08, 0.2, -0.14);
+      this.rightForearmPivot.rotation.set(-0.58, 0, 0);
+    } else if (mode === 'flinch') {
+      // Startled hands-up dodge
+      this.torsoPivot.rotation.set(-0.24, 0, 0);
+      this.headPivot.rotation.set(-0.15, 0, 0);
+      this.leftArmPivot.rotation.set(-1.65, 0.25, 0.35);
+      this.leftForearmPivot.rotation.set(-0.85, 0, 0);
+      this.rightArmPivot.rotation.set(-1.65, -0.25, -0.35);
+      this.rightForearmPivot.rotation.set(-0.85, 0, 0);
+    }
+  }
+
   _lerpAngle(a, b, t) {
     let diff = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
     if (diff < -Math.PI) diff += Math.PI * 2;
@@ -446,7 +550,7 @@ export class Player {
       this.leftArmPivot.rotation.set(-swing * 0.72, 0, 0.07);
       this.rightArmPivot.rotation.set(swing * 0.72, 0, -0.07);
       this.leftForearmPivot.rotation.set(isMoving ? -0.25 : -0.1, 0, 0);
-      this.rightForearmPivot.rotation.set(w.id === 'smg' ? -0.45 : isMoving ? -0.25 : -0.1, 0, 0);
+      this.rightForearmPivot.rotation.set(w.id === 'm416' ? -0.45 : isMoving ? -0.25 : -0.1, 0, 0);
     }
   }
 }

@@ -14,6 +14,7 @@ import { buildNeighborhoodLOD } from './buildings/neighborhoodLOD.js';
 import { Player, WEAPONS } from './entities/player.js';
 import { NPCManager } from './entities/npcs.js';
 import { CatManager } from './entities/cats.js';
+import { StoryCutsceneManager } from './engine/storyCutscene.js';
 
 // ============================================================================
 // DOM & HUD REFERENCES
@@ -159,6 +160,31 @@ const npcManager = new NPCManager(scene, {
   movieBedroom: heroHouse.bedroomInfo,
 });
 const catManager = new CatManager(scene, audio);
+
+function damagePlayer(amount, attackerPos = null) {
+  player.health = Math.max(10, player.health - amount);
+  if (attackerPos) {
+    const push = new THREE.Vector3().subVectors(player.position, attackerPos).setY(0);
+    if (push.lengthSq() > 0.001) {
+      push.normalize();
+      player.velocity.x += push.x * 5.2;
+      player.velocity.z += push.z * 5.2;
+    }
+  }
+}
+
+const storyCutscene = new StoryCutsceneManager({
+  camera,
+  cameraController,
+  player,
+  npcManager,
+  heroHouseDoor: heroHouse.door,
+  audio,
+  colliders: worldColliders,
+  walkableSurfaces,
+  onDamagePlayer: (dmg) => damagePlayer(dmg),
+  onToast: (msg) => showToast(msg),
+});
 
 // Non-blocking background Overpass query (optional enrichment/status; instant fallback already active)
 fetchOverpassNeighborhoodData().then((osm) => {
@@ -310,6 +336,13 @@ if (isTouchDevice) {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (storyCutscene.isActive) {
+    if (e.code === 'Backspace') {
+      e.preventDefault();
+      storyCutscene.skip();
+    }
+    return;
+  }
   if (e.code === 'KeyH' || e.code === 'Escape') {
     if (e.code === 'KeyH') {
       toggleModal();
@@ -333,7 +366,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 window.addEventListener('wheel', (e) => {
-  if (isPaused) return;
+  if (isPaused || storyCutscene.isActive) return;
   const dir = e.deltaY > 0 ? 1 : -1;
   selectWeapon(player.weaponIndex + dir);
 }, { passive: true });
@@ -350,7 +383,7 @@ function safeRequestPointerLock() {
 }
 
 canvas.addEventListener('mousedown', (e) => {
-  if (isPaused) return;
+  if (isPaused || storyCutscene.isActive) return;
   audio.init();
   if (document.pointerLockElement !== canvas && !isTouchDevice) {
     safeRequestPointerLock();
@@ -379,7 +412,7 @@ window.addEventListener('mouseup', (e) => {
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
 window.addEventListener('mousemove', (e) => {
-  if (isPaused) return;
+  if (isPaused || storyCutscene.isActive) return;
   if (document.pointerLockElement === canvas) {
     cameraController.rotate(e.movementX, e.movementY, 0.0023);
   } else if (mouseDragging) {
@@ -696,6 +729,18 @@ function renderMinimap() {
     minimapCtx.arc(npc.position.x * scale, npc.position.z * scale, 2.6, 0, Math.PI * 2);
     minimapCtx.fill();
   }
+  if (npcManager.movieNpc && npcManager.movieNpc.state === 'CHASE_PLAYER') {
+    minimapCtx.fillStyle = '#ff3b30';
+    minimapCtx.beginPath();
+    minimapCtx.arc(
+      npcManager.movieNpc.position.x * scale,
+      npcManager.movieNpc.position.z * scale,
+      3.4,
+      0,
+      Math.PI * 2
+    );
+    minimapCtx.fill();
+  }
 
   // Cats
   minimapCtx.fillStyle = '#ffd166';
@@ -761,12 +806,31 @@ function gatherInput() {
 
 function stepGame(dt) {
   if (!isPaused) {
-    const input = gatherInput();
-    player.update(dt, input, cameraController.yaw, worldColliders, walkableSurfaces);
+    storyCutscene.update(dt);
 
-    // Automatic fire for SMG when held
-    if ((mouseFireHeld || touchInput.fire) && player.currentWeapon.auto) {
-      player.tryAttack(camera, handleCombatEvent);
+    if (!storyCutscene.isActive) {
+      const input = gatherInput();
+      player.update(dt, input, cameraController.yaw, worldColliders, walkableSurfaces);
+
+      // Automatic fire for SMG when held
+      if ((mouseFireHeld || touchInput.fire) && player.currentWeapon.auto) {
+        player.tryAttack(camera, handleCombatEvent);
+      }
+
+      npcManager.updateMovieNpcGameplay(dt, player.position, worldColliders, walkableSurfaces, {
+        onHitPlayer: (attackerPos) => {
+          audio.playPunch(true);
+          damagePlayer(12, attackerPos);
+          showToast('🩴 Abi terlikle vurdu! Kaç!');
+        },
+        onGiveUp: () => {
+          showToast('😤 Abi: "Bir daha dondurma sorma!"');
+        },
+      });
+
+      if (npcManager.movieNpc?.state !== 'CHASE_PLAYER' && player.health < 100) {
+        player.health = Math.min(100, player.health + 2.5 * dt);
+      }
     }
 
     npcManager.update(dt, worldColliders, walkableSurfaces);
@@ -777,7 +841,9 @@ function stepGame(dt) {
     door.update(dt);
   }
 
-  cameraController.update(dt, player.position, player.height);
+  if (!storyCutscene.isActive) {
+    cameraController.update(dt, player.position, player.height);
+  }
 
   // Update bullet tracers & sparks
   for (let i = activeTracers.length - 1; i >= 0; i--) {

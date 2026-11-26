@@ -647,3 +647,135 @@ html, body {
   .controls-grid { grid-template-columns: 1fr; }
   #radar-cluster { bottom: 170px; left: 14px; }
 }
+
+/* ============================================================================
+ * STORY MODE CINEMATIC CUTSCENE OVERLAY
+ * ============================================================================ */
+body.cutscene-active #hud,
+body.cutscene-active #crosshair,
+body.cutscene-active #touch-controls {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+#hud {
+  transition: opacity 0.35s ease;
+}
+
+#cutscene-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+}
+
+#cutscene-overlay.hidden {
+  display: none;
+}
+
+#cutscene-bar-top,
+#cutscene-bar-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: linear-gradient(to bottom, #050506, #0b0a0a);
+  transition: height 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#cutscene-bar-top {
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 207, 125, 0.14);
+}
+
+#cutscene-bar-bottom {
+  bottom: 0;
+  background: linear-gradient(to top, #050506, #0b0a0a);
+  border-top: 1px solid rgba(255, 207, 125, 0.14);
+}
+
+#cutscene-overlay.bars-in #cutscene-bar-top,
+#cutscene-overlay.bars-in #cutscene-bar-bottom {
+  height: clamp(54px, 10vh, 84px);
+}
+
+.cutscene-badge {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #ffd082;
+  background: rgba(244, 162, 54, 0.14);
+  border: 1px solid rgba(244, 162, 54, 0.4);
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+
+#cutscene-skip-hint {
+  font-size: 12px;
+  color: rgba(244, 239, 230, 0.68);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#cutscene-skip-hint kbd {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffe2ad;
+}
+
+#cutscene-subtitle-wrap {
+  position: absolute;
+  bottom: calc(clamp(54px, 10vh, 84px) + 22px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(760px, 90vw);
+  background: rgba(10, 9, 8, 0.84);
+  border: 1px solid rgba(255, 215, 150, 0.3);
+  border-radius: 12px;
+  padding: 12px 22px;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#cutscene-subtitle-wrap.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+}
+
+#cutscene-speaker {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  color: #ffcf7d;
+}
+
+#cutscene-speaker.angry {
+  color: #ff6b5a;
+}
+
+#cutscene-speaker.narrator {
+  color: #8fe0ff;
+}
+
+#cutscene-text {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fff8ee;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
