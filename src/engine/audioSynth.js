@@ -338,4 +338,39 @@ export class AudioSynth {
     noise.start(now);
     noise.stop(now + 0.25);
   }
+
+  playDoorToggle(opening = true) {
+    if (!this.ctx || this.muted) return;
+    const now = this.ctx.currentTime;
+
+    // Wooden latch click
+    const click = this.ctx.createOscillator();
+    click.type = 'triangle';
+    click.frequency.setValueAtTime(opening ? 480 : 320, now);
+    click.frequency.exponentialRampToValueAtTime(140, now + 0.06);
+    const cGain = this.ctx.createGain();
+    cGain.gain.setValueAtTime(0.24, now);
+    cGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+    click.connect(cGain);
+    cGain.connect(this.master);
+    click.start(now);
+    click.stop(now + 0.08);
+
+    // Subtle wooden door creak / thud
+    const creak = this.ctx.createOscillator();
+    creak.type = 'sawtooth';
+    creak.frequency.setValueAtTime(opening ? 190 : 140, now + 0.04);
+    creak.frequency.linearRampToValueAtTime(opening ? 255 : 92, now + 0.24);
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 380;
+    const kGain = this.ctx.createGain();
+    kGain.gain.setValueAtTime(0.08, now + 0.04);
+    kGain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+    creak.connect(filter);
+    filter.connect(kGain);
+    kGain.connect(this.master);
+    creak.start(now + 0.04);
+    creak.stop(now + 0.27);
+  }
 }

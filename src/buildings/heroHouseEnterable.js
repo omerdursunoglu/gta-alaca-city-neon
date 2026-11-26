@@ -111,15 +111,55 @@ export function buildHeroHouseEnterable() {
   addBox(4.3, gWallH, 0.24, -7.65, gWallY, 5.88, matAlmasik, true);
   // Lintel above front door: Y = 2.82 to 3.45 (height 0.63) - carved stone header
   addBox(1.4, 0.63, 0.24, -10.5, 3.135, 5.88, matStone, true);
-  // Wooden Door Frame & Swung-Open Door Leaf
+  // Wooden Door Frame & Hinged Front Door (Starts CLOSED by default!)
   addBox(0.1, 2.38, 0.3, -11.2, 1.64, 5.88, matWood, false, 'doorframe', false);
   addBox(0.1, 2.38, 0.3, -9.8, 1.64, 5.88, matWood, false, 'doorframe', false);
   addBox(1.5, 0.12, 0.32, -10.5, 2.86, 5.88, matWood, false, 'doorframe', false);
-  // Swung-open wooden front door leaf inside hallway
-  const frontDoor = new THREE.Mesh(new THREE.BoxGeometry(1.26, 2.32, 0.08), matWood);
-  frontDoor.position.set(-11.15, 1.63, 5.22);
-  frontDoor.rotation.y = Math.PI * 0.47;
-  group.add(registerMesh(frontDoor, false));
+
+  const doorPivot = new THREE.Group();
+  doorPivot.position.set(-11.16, 1.63, 5.88);
+  const frontDoor = new THREE.Mesh(new THREE.BoxGeometry(1.32, 2.32, 0.08), matWood);
+  frontDoor.position.set(0.66, 0, 0);
+  registerMesh(frontDoor, true);
+  doorPivot.add(frontDoor);
+
+  // Brass door handle & Ottoman ring knocker
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.16), matBrass);
+  handle.position.set(1.16, -0.05, 0);
+  doorPivot.add(handle);
+  const knocker = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.014, 8, 14), matBrass);
+  knocker.position.set(0.66, 0.12, 0.055);
+  doorPivot.add(knocker);
+  group.add(doorPivot);
+
+  const doorCollider = {
+    minX: -11.22,
+    maxX: -9.78,
+    minY: 0.45,
+    maxY: 2.85,
+    minZ: 5.74,
+    maxZ: 6.02,
+    tag: 'front_door_1',
+    disabled: false,
+  };
+  colliders.push(doorCollider);
+
+  const doorController = {
+    label: 'Tokat House',
+    position: new THREE.Vector3(-10.5, 0.47, 5.88),
+    isOpen: false,
+    angle: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      doorCollider.disabled = this.isOpen;
+      return this.isOpen;
+    },
+    update(dt) {
+      const target = this.isOpen ? Math.PI * 0.48 : 0;
+      this.angle = THREE.MathUtils.lerp(this.angle, target, Math.min(1, dt * 10));
+      doorPivot.rotation.y = this.angle;
+    },
+  };
 
   // Back Wall (-Z at Z = -3.88)
   addBox(10.0, gWallH, 0.24, -10.5, gWallY, -3.88, matAlmasik, true);
@@ -359,6 +399,7 @@ export function buildHeroHouseEnterable() {
     cameraColliders,
     walkableSurfaces,
     lights,
+    door: doorController,
     bedroomInfo: {
       bedPos: new THREE.Vector3(-6.65, 4.32, -2.5),
       headZ: -3.22,

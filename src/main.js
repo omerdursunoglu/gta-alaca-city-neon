@@ -551,7 +551,30 @@ btnApplyGmaps.addEventListener('click', async () => {
     : `Map Mode: ${res.reason}`;
 });
 
+const houseDoors = [heroHouse.door, heroHouseLeft2.door].filter(Boolean);
+
+function findNearestDoor(pos, maxDist = 2.6) {
+  if (pos.y > 1.8) return null;
+  let best = null;
+  let bestD = maxDist;
+  for (const door of houseDoors) {
+    const d = Math.hypot(pos.x - door.position.x, pos.z - door.position.z);
+    if (d < bestD) {
+      bestD = d;
+      best = door;
+    }
+  }
+  return best;
+}
+
 function handleInteract() {
+  const nearDoor = findNearestDoor(player.position, 2.6);
+  if (nearDoor) {
+    const opened = nearDoor.toggle();
+    audio.playDoorToggle(opened);
+    showToast(`🚪 ${opened ? 'Opened' : 'Closed'} ${nearDoor.label} door`);
+    return;
+  }
   const nearCat = catManager.findNearestCat(player.position, 3.0);
   if (nearCat) {
     const catName = catManager.petCat(nearCat);
@@ -590,12 +613,15 @@ function updateZoneAndPrompts() {
   zoneTagEl.textContent = zone;
 
   // Context prompt
+  const nearDoor = findNearestDoor(p, 2.6);
   const nearCat = catManager.findNearestCat(p, 2.7);
-  if (nearCat) {
-    promptBannerEl.textContent = `[E] Pet ${nearCat.name} the street cat`;
+  if (nearDoor) {
+    promptBannerEl.textContent = nearDoor.isOpen
+      ? `[E] Close Door — ${nearDoor.label}`
+      : `[E] Open Door — ${nearDoor.label}`;
     promptBannerEl.classList.remove('hidden');
-  } else if (Math.hypot(p.x + 10.5, p.z - 7.3) < 2.2 && p.y < 0.6) {
-    promptBannerEl.textContent = 'Walk inside the open 2-story Tokat House · Staircase on left';
+  } else if (nearCat) {
+    promptBannerEl.textContent = `[E] Pet ${nearCat.name} the street cat`;
     promptBannerEl.classList.remove('hidden');
   } else if (Math.hypot(p.x - 4.0, p.z - 7.0) < 2.5) {
     promptBannerEl.textContent = '[E] Inspect Tokat Alaca Mescit Camii (1300 AD)';
@@ -742,6 +768,10 @@ function stepGame(dt) {
 
     npcManager.update(dt, worldColliders, walkableSurfaces);
     catManager.update(dt, player.position, worldColliders, walkableSurfaces);
+  }
+
+  for (const door of houseDoors) {
+    door.update(dt);
   }
 
   cameraController.update(dt, player.position, player.height);

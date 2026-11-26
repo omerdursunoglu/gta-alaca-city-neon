@@ -244,6 +244,7 @@ export function resolveEntityCollisions(pos, radius, height, colliders, walkable
   for (let pass = 0; pass < 2; pass++) {
     for (let i = 0; i < colliders.length; i++) {
       const c = colliders[i];
+      if (c.disabled) continue;
       if (entMaxY <= c.minY || entMinY >= c.maxY) continue;
 
       const closestX = Math.max(c.minX, Math.min(pos.x, c.maxX));

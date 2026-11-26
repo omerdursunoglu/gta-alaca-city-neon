@@ -103,14 +103,54 @@ export function buildHeroHouseLeft2() {
   addBox(5.6, gWallH, 0.24, -19.8, gWallY, 5.88, matAlmasik, true);
   addBox(1.4, 0.63, 0.24, -23.3, 3.135, 5.88, matStone, true);
 
-  // Wooden Door Frame & Swung-Open Door Leaf
+  // Wooden Door Frame & Hinged Front Door (Starts CLOSED by default!)
   addBox(0.1, 2.38, 0.3, -24.0, 1.64, 5.88, matWood, false, 'df1', false);
   addBox(0.1, 2.38, 0.3, -22.6, 1.64, 5.88, matWood, false, 'df2', false);
   addBox(1.5, 0.12, 0.32, -23.3, 2.86, 5.88, matWood, false, 'df3', false);
-  const openDoor = new THREE.Mesh(new THREE.BoxGeometry(1.26, 2.32, 0.08), matWood);
-  openDoor.position.set(-23.95, 1.63, 5.22);
-  openDoor.rotation.y = Math.PI * 0.47;
-  group.add(registerMesh(openDoor, false));
+
+  const doorPivot = new THREE.Group();
+  doorPivot.position.set(-23.96, 1.63, 5.88);
+  const frontDoor = new THREE.Mesh(new THREE.BoxGeometry(1.32, 2.32, 0.08), matWood);
+  frontDoor.position.set(0.66, 0, 0);
+  registerMesh(frontDoor, true);
+  doorPivot.add(frontDoor);
+
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.16), matBrass);
+  handle.position.set(1.16, -0.05, 0);
+  doorPivot.add(handle);
+  const knocker = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.014, 8, 14), matBrass);
+  knocker.position.set(0.66, 0.12, 0.055);
+  doorPivot.add(knocker);
+  group.add(doorPivot);
+
+  const doorCollider = {
+    minX: -24.02,
+    maxX: -22.58,
+    minY: 0.45,
+    maxY: 2.85,
+    minZ: 5.74,
+    maxZ: 6.02,
+    tag: 'front_door_2',
+    disabled: false,
+  };
+  colliders.push(doorCollider);
+
+  const doorController = {
+    label: 'Gamer House',
+    position: new THREE.Vector3(-23.3, 0.47, 5.88),
+    isOpen: false,
+    angle: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      doorCollider.disabled = this.isOpen;
+      return this.isOpen;
+    },
+    update(dt) {
+      const target = this.isOpen ? Math.PI * 0.48 : 0;
+      this.angle = THREE.MathUtils.lerp(this.angle, target, Math.min(1, dt * 10));
+      doorPivot.rotation.y = this.angle;
+    },
+  };
 
   // Back, Left, Right Exterior Walls
   addBox(10.2, gWallH, 0.24, cx, gWallY, -4.28, matAlmasik, true);
@@ -567,6 +607,7 @@ export function buildHeroHouseLeft2() {
     cameraColliders,
     walkableSurfaces,
     lights,
+    door: doorController,
     setupInfo: {
       chairSeatPos: new THREE.Vector3(-18.96, 4.18, -2.9),
       chairStandPos: new THREE.Vector3(-19.55, 3.72, -2.55),
