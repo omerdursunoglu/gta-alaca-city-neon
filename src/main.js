@@ -251,11 +251,13 @@ function handleCombatEvent(ev) {
       addWanted(1);
       if (res.knockedDown) {
         cash += 35;
+        audio.playCashPickup();
         showToast('+$35 · Neighborhood disturbance!');
       }
     } else if (firstWall) {
       endPoint = firstWall.point;
       spawnImpactSparks(firstWall.point, 0xffe299);
+      audio.playRicochet();
     }
 
     spawnBulletTracer(ev.muzzleOrigin, endPoint);
@@ -275,6 +277,7 @@ function handleCombatEvent(ev) {
         addWanted(1);
         if (res.knockedDown) {
           cash += 25;
+          audio.playCashPickup();
           showToast('+$25 · Knockdown!');
         }
       }

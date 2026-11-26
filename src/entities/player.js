@@ -188,6 +188,7 @@ export class Player {
   }
 
   switchWeapon(index) {
+    const changed = this.weaponIndex !== ((index % WEAPONS.length) + WEAPONS.length) % WEAPONS.length;
     this.weaponIndex = ((index % WEAPONS.length) + WEAPONS.length) % WEAPONS.length;
     this.reloadingTimer = 0;
     const wId = this.currentWeapon.id;
@@ -195,6 +196,7 @@ export class Player {
       mesh.visible = k === wId;
     });
     this.muzzleFlash.position.z = wId === 'smg' ? 0.48 : 0.28;
+    if (changed) this.audio.playWeaponSwitch();
     return this.currentWeapon;
   }
 
@@ -324,6 +326,7 @@ export class Player {
     if (input.jump && this.onGround) {
       this.velocity.y = 6.35;
       this.onGround = false;
+      this.audio.playJump();
     }
 
     // Gravity
